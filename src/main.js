@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { applyDamage, calculateShotDamage, getMissionOutcome, transferReloadAmmo } from './combat-rules.mjs';
 import { calculateWeaponPose } from './weapon-feel.mjs';
 import { chooseTacticalIntent, getFlankApproach, scoreCoverPosition } from './ai-tactics.mjs';
+import { getDamageDirection, getImpactIntensity } from './combat-feedback.mjs';
 
 const canvas = document.querySelector('#game-canvas');
 const hud = document.querySelector('#hud');
@@ -42,7 +43,7 @@ const tracers = [];
 const state = {
   mode: 'menu', health: 100, kills: 0, totalEnemies: 8, startTime: 0, elapsed: 0,
   yaw: 0, pitch: 0, isAiming: false, isSprinting: false, isGrounded: true,
-  verticalVelocity: 0, bobTime: 0, recoil: 0, damageFlash: 0, hitMarker: 0,
+  verticalVelocity: 0, bobTime: 0, recoil: 0, damageFlash: 0, damageDirectionTimer: 0, damageDirection: 'front', damageDirectionIntensity: 0, hitMarker: 0,
   toastTimer: 0, reloadTimer: 0, reloadDuration: 1.45, fireHeld: false,
   lastShot: 0, lastEnemyShot: 0, stamina: 100,
 };
@@ -178,7 +179,7 @@ function createEnemy(x, z, index) {
   barFill.position.z = 0.01; healthBar.add(barBg, barFill); healthBar.position.y = 2.2; root.add(healthBar);
   const enemy = { root, torso, head, armPivots, legs, healthBar, barFill, health: 100, maxHealth: 100, alive: true, index,
     speed: 1.05 + Math.random() * 0.35, fireCooldown: 0.8 + Math.random() * 1.1, strafeDir: Math.random() > 0.5 ? 1 : -1,
-    strafeTimer: 1.4 + Math.random() * 2, phase: Math.random() * Math.PI * 2, role: index % 3 === 0 ? 'flanker' : index % 3 === 1 ? 'assault' : 'support', flankSign: index % 2 === 0 ? 1 : -1, state: 'advance', targetCover: null, hurtFlash: 0 };
+    strafeTimer: 1.4 + Math.random() * 2, phase: Math.random() * Math.PI * 2, role: index % 3 === 0 ? 'flanker' : index % 3 === 1 ? 'assault' : 'support', flankSign: index % 2 === 0 ? 1 : -1, state: 'advance', targetCover: null, hurtFlash: 0, hurtMaterials: [armor, dark, skin, accent], staggerTimer: 0 };
   for (const part of [torso, vest, head, helmet, visor, gun, gunBarrel, ...armPivots.flatMap((p) => p.children), ...legs.flatMap((p) => p.children)]) part.userData.enemy = enemy;
   enemyMeshes.push(torso, vest, head, helmet, visor, gun, gunBarrel, ...armPivots.flatMap((p) => p.children), ...legs.flatMap((p) => p.children));
   enemies.push(enemy); return enemy;
@@ -234,14 +235,29 @@ function updateHealthHud() {
   document.querySelector('#health-number').textContent = String(Math.max(0, Math.ceil(state.health)));
   const fill = document.querySelector('#health-fill'); fill.style.width = `${Math.max(0, state.health)}%`; fill.style.background = state.health < 30 ? '#d94d47' : state.health < 60 ? '#d5a04d' : '#d6b36e';
 }
-function damagePlayer(amount) {
-  if (state.mode !== 'playing') return; state.health = applyDamage(state.health, amount); state.damageFlash = 0.55; updateHealthHud(); playTone(95, 0.13, 'sawtooth', 0.025, -50); if (state.health <= 0) finishGame(false);
+function damagePlayer(amount, sourcePosition = null) {
+  if (state.mode !== 'playing') return;
+  state.health = applyDamage(state.health, amount);
+  state.damageFlash = 0.55;
+  if (sourcePosition) {
+    state.damageDirection = getDamageDirection(camera.position, sourcePosition, state.yaw);
+    state.damageDirectionTimer = 0.42;
+    state.damageDirectionIntensity = getImpactIntensity(amount);
+    document.querySelectorAll('[data-hit-direction]').forEach((indicator) => {
+      indicator.style.opacity = indicator.dataset.hitDirection === state.damageDirection
+        ? String(state.damageDirectionIntensity)
+        : '0';
+    });
+  }
+  updateHealthHud();
+  playTone(95, 0.13, 'sawtooth', 0.025, -50);
+  if (state.health <= 0) finishGame(false);
 }
 function markHit() {
   state.hitMarker = 0.16; const marker = document.querySelector('#hit-marker'); marker.style.opacity = '1'; marker.style.color = '#f2d18e'; setTimeout(() => { marker.style.opacity = '0'; }, 120);
 }
 function damageEnemy(enemy, amount, point) {
-  if (!enemy.alive) return; enemy.health = applyDamage(enemy.health, amount); enemy.hurtFlash = 0.12; enemy.barFill.scale.x = Math.max(0.001, enemy.health / enemy.maxHealth); enemy.barFill.position.x = -0.34 * (1 - enemy.health / enemy.maxHealth); enemy.healthBar.visible = true;
+  if (!enemy.alive) return; enemy.health = applyDamage(enemy.health, amount); enemy.hurtFlash = 0.16; enemy.staggerTimer = 0.2; const hitPush = enemy.root.position.clone().sub(point); hitPush.y = 0; if (hitPush.lengthSq() > 0.001) enemy.root.position.addScaledVector(hitPush.normalize(), 0.08); enemy.barFill.scale.x = Math.max(0.001, enemy.health / enemy.maxHealth); enemy.barFill.position.x = -0.34 * (1 - enemy.health / enemy.maxHealth); enemy.healthBar.visible = true;
   spawnImpact(point, 0xd36b57, 4); markHit();
   if (enemy.health <= 0) { enemy.alive = false; enemy.root.visible = false; state.kills += 1; updateEnemyCount(); playTone(520, 0.09, 'triangle', 0.025, 220); showToast('目标已清除', 700); if (getMissionOutcome(state.kills, state.totalEnemies, state.health) === 'won') finishGame(true); }
 }
@@ -324,45 +340,47 @@ function updateEnemies(dt) {
     const direction = toPlayer.clone().normalize();
     const headPos = new THREE.Vector3(pos.x, 1.65, pos.z);
     const visible = hasLineOfSight(headPos, new THREE.Vector3(playerPos.x, 1.35, playerPos.z));
-
     enemy.strafeTimer -= dt;
     if (enemy.strafeTimer <= 0) {
       enemy.strafeDir *= -1;
       enemy.strafeTimer = 1.6 + Math.random() * 2.2;
     }
-    if (enemy.health < 48 && !enemy.targetCover) {
-      enemy.targetCover = nearestCover(pos, playerPos, enemy);
-    }
+    if (enemy.health < 48 && !enemy.targetCover) enemy.targetCover = nearestCover(pos, playerPos, enemy);
 
-    const intent = chooseTacticalIntent({
-      health: enemy.health,
-      distance,
-      hasCover: Boolean(enemy.targetCover),
-      role: enemy.role,
-    });
-    if (intent === 'retreat' && enemy.targetCover) {
-      enemy.state = 'retreat';
-      const retreatDir = enemy.targetCover.clone().sub(pos);
-      retreatDir.y = 0;
-      if (retreatDir.length() > 1.1) moveEnemy(enemy, retreatDir, enemy.speed * dt * 1.15);
-      else if (visible) enemy.state = 'engage';
-    } else if (intent === 'advance') {
-      enemy.state = 'advance';
-      const approach = enemy.role === 'flanker'
-        ? getFlankApproach(direction, enemy.flankSign, 0.42)
-        : direction;
-      moveEnemy(enemy, approach, enemy.speed * dt);
-    } else if (intent === 'support') {
-      enemy.state = 'support';
-      const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir);
-      moveEnemy(enemy, side, enemy.speed * dt * 0.18);
-    } else if (intent === 'engage') {
-      enemy.state = 'engage';
-      const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir);
-      const lateralSpeed = enemy.role === 'flanker' ? 0.62 : 0.45;
-      moveEnemy(enemy, side, enemy.speed * dt * lateralSpeed);
+    const staggered = enemy.staggerTimer > 0;
+    if (staggered) {
+      enemy.staggerTimer = Math.max(0, enemy.staggerTimer - dt);
+      enemy.state = 'staggered';
     } else {
-      enemy.state = 'hold';
+      const intent = chooseTacticalIntent({
+        health: enemy.health,
+        distance,
+        hasCover: Boolean(enemy.targetCover),
+        role: enemy.role,
+      });
+      if (intent === 'retreat' && enemy.targetCover) {
+        enemy.state = 'retreat';
+        const retreatDir = enemy.targetCover.clone().sub(pos);
+        retreatDir.y = 0;
+        if (retreatDir.length() > 1.1) moveEnemy(enemy, retreatDir, enemy.speed * dt * 1.15);
+        else if (visible) enemy.state = 'engage';
+      } else if (intent === 'advance') {
+        enemy.state = 'advance';
+        const approach = enemy.role === 'flanker'
+          ? getFlankApproach(direction, enemy.flankSign, 0.42)
+          : direction;
+        moveEnemy(enemy, approach, enemy.speed * dt);
+      } else if (intent === 'support') {
+        enemy.state = 'support';
+        const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir);
+        moveEnemy(enemy, side, enemy.speed * dt * 0.18);
+      } else if (intent === 'engage') {
+        enemy.state = 'engage';
+        const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir);
+        moveEnemy(enemy, side, enemy.speed * dt * (enemy.role === 'flanker' ? 0.62 : 0.45));
+      } else {
+        enemy.state = 'hold';
+      }
     }
 
     enemy.root.lookAt(new THREE.Vector3(playerPos.x, 0, playerPos.z));
@@ -374,7 +392,18 @@ function updateEnemies(dt) {
     enemy.armPivots[1].rotation.x = -0.12;
     enemy.healthBar.quaternion.copy(camera.quaternion);
     enemy.healthBar.visible = enemy.health < enemy.maxHealth;
-    if (enemy.hurtFlash > 0) enemy.hurtFlash -= dt;
+    if (enemy.hurtFlash > 0) {
+      enemy.hurtFlash = Math.max(0, enemy.hurtFlash - dt);
+      for (const material of enemy.hurtMaterials) {
+        material.emissive.setHex(0x7f1b12);
+        material.emissiveIntensity = 0.7;
+      }
+    } else {
+      for (const material of enemy.hurtMaterials) {
+        material.emissive.setHex(0x000000);
+        material.emissiveIntensity = 0;
+      }
+    }
 
     enemy.fireCooldown -= dt;
     if (visible && distance < 25 && enemy.fireCooldown <= 0 && state.mode === 'playing') {
@@ -383,7 +412,7 @@ function updateEnemies(dt) {
       const end = new THREE.Vector3(playerPos.x, 1.35, playerPos.z);
       spawnTracer(start, end, 0xe36c55);
       playTone(145, 0.045, 'square', 0.008, -70);
-      if (Math.random() < (distance < 10 ? 0.38 : 0.24)) damagePlayer(distance < 10 ? 9 : 6);
+      if (Math.random() < (distance < 10 ? 0.38 : 0.24)) damagePlayer(distance < 10 ? 9 : 6, pos.clone());
     }
   }
 }
@@ -448,6 +477,13 @@ function updateEffects(dt) {
   for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.life -= dt; p.mesh.position.addScaledVector(p.velocity, dt); p.velocity.y -= 7 * dt; p.mesh.material.opacity = Math.max(0, p.life / p.maxLife); if (p.life <= 0) { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); particles.splice(i, 1); } }
   for (let i = tracers.length - 1; i >= 0; i--) { const t = tracers[i]; t.life -= dt; t.line.material.opacity = Math.max(0, t.life / 0.11) * 0.8; if (t.life <= 0) { scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose(); tracers.splice(i, 1); } }
   if (state.damageFlash > 0) { state.damageFlash = Math.max(0, state.damageFlash - dt * 1.6); document.querySelector('#damage-flash').style.opacity = String(state.damageFlash); }
+  if (state.damageDirectionTimer > 0) {
+    state.damageDirectionTimer = Math.max(0, state.damageDirectionTimer - dt);
+    const alpha = state.damageDirectionTimer / 0.42 * state.damageDirectionIntensity;
+    document.querySelectorAll('[data-hit-direction]').forEach((indicator) => {
+      indicator.style.opacity = indicator.dataset.hitDirection === state.damageDirection ? String(alpha) : '0';
+    });
+  }
 }
 function finishGame(victory) {
   if (state.mode !== 'playing') return; state.mode = victory ? 'won' : 'lost'; document.exitPointerLock?.(); hud.classList.add('hidden'); touchControls.classList.add('hidden'); pauseHint.classList.add('hidden'); endScreen.classList.remove('hidden');
@@ -459,10 +495,11 @@ function finishGame(victory) {
 function resetGame() {
   for (const enemy of enemies) scene.remove(enemy.root); enemies.length = 0; enemyMeshes.length = 0;
   for (const p of particles) scene.remove(p.mesh); particles.length = 0; for (const t of tracers) scene.remove(t.line); tracers.length = 0;
-  state.health = 100; state.kills = 0; state.elapsed = 0; state.yaw = 0; state.pitch = 0; state.isAiming = false; state.isGrounded = true; state.verticalVelocity = 0; state.recoil = 0; state.damageFlash = 0; state.reloadTimer = 0; state.stamina = 100; state.lastShot = 0; state.mode = 'playing';
+  state.health = 100; state.kills = 0; state.elapsed = 0; state.yaw = 0; state.pitch = 0; state.isAiming = false; state.isGrounded = true; state.verticalVelocity = 0; state.recoil = 0; state.damageFlash = 0; state.damageDirectionTimer = 0; state.reloadTimer = 0; state.stamina = 100; state.lastShot = 0; state.mode = 'playing';
   camera.position.set(0, 1.7, 23); camera.rotation.set(0, 0, 0); camera.fov = 76; camera.updateProjectionMatrix();
   for (let i = 0; i < weaponStates.length; i++) { weaponStates[i].ammo = weaponDefs[i].magazineSize; weaponStates[i].reserve = weaponDefs[i].reserveStart; }
   setWeapon(1, true); updateHealthHud(); spawnEnemies(); state.startTime = performance.now() / 1000; hud.classList.remove('hidden'); menuScreen.classList.add('hidden'); endScreen.classList.add('hidden'); document.querySelector('#reload-indicator').classList.add('hidden');
+  document.querySelectorAll('[data-hit-direction]').forEach((indicator) => { indicator.style.opacity = '0'; });
   if (matchMedia('(pointer: coarse)').matches) touchControls.classList.remove('hidden'); else canvas.requestPointerLock?.();
 }
 function pauseGame() { if (state.mode !== 'playing' || matchMedia('(pointer: coarse)').matches) return; if (document.pointerLockElement !== canvas) { state.mode = 'paused'; pauseHint.classList.remove('hidden'); } }
