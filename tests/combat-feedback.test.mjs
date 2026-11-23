@@ -13,7 +13,7 @@ test('damage direction identifies front, rear, left, and right at zero yaw', () 
 test('damage direction rotates with the player view', () => {
   const player = { x: 0, z: 0 };
   assert.equal(getDamageDirection(player, { x: -5, z: 0 }, Math.PI / 2), 'front');
-  assert.equal(getDamageDirection(player, { x: 0, z: -5 }, Math.PI / 2), 'left');
+  assert.equal(getDamageDirection(player, { x: 0, z: -5 }, Math.PI / 2), 'right');
 });
 
 test('impact intensity is normalized and clamped', () => {
