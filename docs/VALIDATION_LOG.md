@@ -81,3 +81,11 @@ The new weapon animation is a deterministic viewmodel transform, not a skeletal 
 - Integrated occupied-cover rejection, line-of-sight protection scoring, ally congestion penalties, flanker/assault/support roles, and multi-direction movement fallback into `src/main.js`.
 - Added six unit tests for cover ranking, occupied positions, retreat gating, support range, intent distance bands, and flank vector normalization.
 - Local validation for the expanded branch: `npm run check` passes; `npm test` passes with 15 tests, 0 failures. Browser and Android acceptance remain pending.
+
+
+### FZ-012 hit feedback extension
+
+- Added `src/combat-feedback.mjs` and four tests for front/rear/left/right damage direction, view-relative rotation, normalized impact intensity, and invalid values.
+- Added four directional HUD indicators. Enemy hits now trigger a short stagger, material emissive flash, and a small impact push; incoming enemy fire lights the corresponding player damage direction indicator.
+- Static validation now checks the new HUD element and stylesheet hook.
+- Expanded local validation target: `npm run check` and `npm test`; 19 tests expected after adding the four hit-feedback tests. Browser/WebGL and Android acceptance remain pending.
