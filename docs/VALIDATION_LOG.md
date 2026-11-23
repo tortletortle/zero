@@ -80,4 +80,4 @@ The new weapon animation is a deterministic viewmodel transform, not a skeletal 
 - Added `src/ai-tactics.mjs`: deterministic cover scoring, retreat/support/advance/engage/hold intent selection, and normalized flank approach vectors.
 - Integrated occupied-cover rejection, line-of-sight protection scoring, ally congestion penalties, flanker/assault/support roles, and multi-direction movement fallback into `src/main.js`.
 - Added six unit tests for cover ranking, occupied positions, retreat gating, support range, intent distance bands, and flank vector normalization.
-- Local validation for the expanded branch: `npm run check` and `npm test` pass; 15 total tests expected after the new six tests are included. Browser and Android acceptance remain pending.
+- Local validation for the expanded branch: `npm run check` passes; `npm test` passes with 15 tests, 0 failures. Browser and Android acceptance remain pending.
