@@ -11,7 +11,7 @@
 - 城市街区战场、低矮掩体、集装箱、废弃车辆、路灯、碎石与雾效。
 - 血量、弹药、击杀数、任务完成/失败结算。
 - 触屏移动、观察、瞄准、开火和换弹的基础操作界面。
-- 使用 Web Audio 合成基础射击、命中和受伤提示音。
+- 使用 Web Audio 合成基础射击、命中和受伤提示音。\n- V0.2：武器专属换弹姿态、移动晃动、冲刺起伏、后坐力反馈与 ADS 视野变化。\n- V0.2：突击/侧翼/支援敌人角色、掩体评分、避障移动与低血量撤退。\n- V0.2：敌人受击硬直、材质闪红、轻微击退，以及玩家受击方向提示。
 
 ## 运行
 
@@ -69,6 +69,10 @@ python3 -m http.server 8000
 - 已完成：基础场景、第一人称控制、三种武器、基础敌人 AI、HUD、胜负流程。
 - 未完成：真实浏览器 WebGL 验收、Android 触控验收、音画质量验收、性能基准、完整武器动画、敌人掩体寻路与关卡平衡。
 - 不将程序化几何体演示等同于最终美术质量；不将自动化静态检查等同于真人试玩验收。
+
+## V0.2 — Combat Feel (feature branch)
+
+The `feature/v0.2-weapon-feel` branch adds a deterministic weapon-pose controller with weapon-specific reload motion, movement sway, sprint bob, recoil response, and aim FOV. It also adds tactical intent selection, cover scoring, flanking approaches, and safer movement-step selection for enemy actors. These systems are isolated in `src/weapon-feel.mjs`, `src/ai-tactics.mjs`, and `src/combat-feedback.mjs`, with dedicated unit tests. The HUD now shows the direction of incoming damage, and enemies briefly stagger and flash when hit. This work remains under review until merged into `develop`; browser rendering and physical-device acceptance are still pending.
 
 ## 许可
 

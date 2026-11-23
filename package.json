@@ -1,11 +1,11 @@
 {
   "name": "frontline-zero",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.1",
   "private": true,
   "type": "module",
   "description": "Browser-first 3D first-person shooter prototype built with Three.js",
   "scripts": {
-    "check": "node --check src/main.js && node --check src/combat-rules.mjs",
+    "check": "node --check src/main.js && node --check src/combat-rules.mjs && node --check src/weapon-feel.mjs && node --check src/ai-tactics.mjs && node --check src/combat-feedback.mjs",
     "test": "node --test tests/*.test.mjs && node tests/static-validation.mjs"
   }
 }

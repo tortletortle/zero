@@ -19,9 +19,11 @@ assert.match(js, /function startReload\(/, 'Reload logic must exist');
 assert.match(js, /function updateEnemies\(/, 'Enemy AI update must exist');
 assert.match(js, /function finishGame\(/, 'Mission result logic must exist');
 assert.match(css, /\.touch-controls/, 'Touch controls styling must exist');
+assert.match(html, /id="damage-direction"/, 'Directional damage indicator must exist');
+assert.match(css, /\.damage-direction/, 'Directional damage indicator styling must exist');
 for (const control of ['W / A / S / D', '鼠标左键', '鼠标右键', 'R', '1 / 2 / 3']) {
   assert.ok(readme.includes(control), `README missing control description: ${control}`);
 }
-const requiredFiles = ['index.html', 'src/main.js', 'src/style.css', 'README.md', 'TASKS.md', 'docs/ENGINEERING_SPEC.md', 'docs/VALIDATION_LOG.md', 'src/combat-rules.mjs'];
+const requiredFiles = ['index.html', 'src/main.js', 'src/style.css', 'README.md', 'TASKS.md', 'docs/ENGINEERING_SPEC.md', 'docs/VALIDATION_LOG.md', 'src/combat-rules.mjs', 'src/combat-feedback.mjs'];
 for (const file of requiredFiles) assert.ok(statSync(join(root, file)).isFile(), `Missing required file: ${file}`);
 console.log(`PASS: ${ids.size} HTML IDs; ${refs.size} JS selector references; all required project files present.`);

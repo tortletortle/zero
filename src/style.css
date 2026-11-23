@@ -111,3 +111,11 @@ kbd { min-width: 54px; padding: 3px 5px; border: 1px solid rgba(200,214,222,.2);
   .hud-bottom-left { width: 130px; transform: scale(.88); transform-origin: bottom left; }
   .hud-bottom-right { transform: scale(.88); transform-origin: bottom right; }
 }
+
+
+.damage-direction { position: absolute; inset: 0; pointer-events: none; }
+.damage-direction i { position: absolute; display: block; color: #f16a5c; font: 900 34px/1 'Barlow Condensed', sans-serif; opacity: 0; text-shadow: 0 0 16px rgba(235,65,50,.8), 0 2px 8px rgba(0,0,0,.9); transition: opacity .06s; }
+.damage-direction [data-hit-direction="front"] { left: 50%; top: 15%; transform: translateX(-50%); }
+.damage-direction [data-hit-direction="right"] { right: 8%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.damage-direction [data-hit-direction="back"] { left: 50%; bottom: 15%; transform: translateX(-50%) rotate(180deg); }
+.damage-direction [data-hit-direction="left"] { left: 8%; top: 50%; transform: translateY(-50%) rotate(90deg); }
