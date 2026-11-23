@@ -16,7 +16,7 @@
 
 - [x] FZ-010: Add weapon-specific viewmodel animations and reload sequences (feature branch; automated tests pass).
 - [x] FZ-011: Improve enemy cover selection, obstacle avoidance, and squad coordination (feature branch; automated tests pass).
-- [ ] FZ-012: Add hit reactions, directional damage feedback, and improved impact effects.
+- [x] FZ-012: Add hit reactions, directional damage feedback, and improved impact effects (feature branch; automated tests pass).
 - [ ] FZ-013: Add sound mix, spatial cues, and accessibility volume controls.
 
 ## V0.3 — Mission content
