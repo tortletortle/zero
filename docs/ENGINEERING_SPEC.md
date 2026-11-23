@@ -17,6 +17,7 @@ Deliver a browser-playable, first-person single-player tactical shooter prototyp
 - `index.html`: application shell, import map, HUD and overlay DOM.
 - `src/style.css`: menu, HUD, responsive layout, touch controls.
 - `src/main.js`: renderer, world construction, player controller, weapons, enemy actors/AI, combat, UI state, audio, and main loop.
+- `src/weapon-feel.mjs`: deterministic first-person weapon pose calculation for aim, movement sway, sprint bob, recoil, and reload motion.
 - `docs/`: engineering and validation records.
 
 V0.1 intentionally keeps the prototype in a single gameplay module to reduce setup friction. Before adding multiple maps, save systems, or multiplayer, split systems into dedicated modules with explicit interfaces.
