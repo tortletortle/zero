@@ -67,3 +67,7 @@ Environment: Node.js v22.16.0; npm 10.9.0.
 ### Scope boundary
 
 The new weapon animation is a deterministic viewmodel transform, not a skeletal reload animation or production weapon model. No claim is made that the visual quality is final. The feature is isolated on a feature branch and is not yet merged into `develop` or `main`.
+
+### GitHub Actions observation
+
+- The pull-request-triggered CI run completed with conclusion `failure`, but the job reported `runner_id: 0`, an empty `steps` array, and no retrievable job log. Therefore the workflow did not provide evidence that either test command ran. This is recorded as an infrastructure/runner execution failure of unknown cause, not as a code-test failure and not as a pass. Local Node.js validation above remains the available test evidence.
