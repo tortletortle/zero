@@ -72,7 +72,7 @@ python3 -m http.server 8000
 
 ## V0.2 — Combat Feel (feature branch)
 
-The `feature/v0.2-weapon-feel` branch adds a deterministic weapon-pose controller with weapon-specific reload motion, movement sway, sprint bob, recoil response, and aim FOV. The controller is isolated in `src/weapon-feel.mjs` and covered by dedicated unit tests. This work remains under review until merged into `develop`; browser rendering and physical-device acceptance are still pending.
+The `feature/v0.2-weapon-feel` branch adds a deterministic weapon-pose controller with weapon-specific reload motion, movement sway, sprint bob, recoil response, and aim FOV. It also adds tactical intent selection, cover scoring, flanking approaches, and safer movement-step selection for enemy actors. These systems are isolated in `src/weapon-feel.mjs` and `src/ai-tactics.mjs`, with dedicated unit tests. This work remains under review until merged into `develop`; browser rendering and physical-device acceptance are still pending.
 
 ## 许可
 
