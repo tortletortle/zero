@@ -15,7 +15,7 @@
 ## V0.2 — Combat feel and AI
 
 - [x] FZ-010: Add weapon-specific viewmodel animations and reload sequences (feature branch; automated tests pass).
-- [ ] FZ-011: Improve enemy cover selection, obstacle avoidance, and squad coordination.
+- [x] FZ-011: Improve enemy cover selection, obstacle avoidance, and squad coordination (feature branch; automated tests pass).
 - [ ] FZ-012: Add hit reactions, directional damage feedback, and improved impact effects.
 - [ ] FZ-013: Add sound mix, spatial cues, and accessibility volume controls.
 
