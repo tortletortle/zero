@@ -312,12 +312,40 @@ function updatePlayer(dt) {
   camera.rotation.set(state.pitch, state.yaw, 0, 'YXZ'); document.querySelector('#status-text').textContent = state.isSprinting ? 'SPRINTING' : state.isAiming ? 'AIMING' : 'COMBAT READY';
 }
 function updateWeapon(dt) {
-  if (!weaponRoot) return; state.recoil = Math.max(0, state.recoil - dt * 0.42); const aiming = state.isAiming;
-  const targetX = aiming ? 0.02 : 0.38; const targetY = aiming ? -0.22 : -0.31; const targetZ = aiming ? -0.54 : -0.64;
-  weaponRoot.position.x += (targetX - weaponRoot.position.x) * Math.min(1, dt * 12); weaponRoot.position.y += (targetY - weaponRoot.position.y) * Math.min(1, dt * 12); weaponRoot.position.z += (targetZ - weaponRoot.position.z) * Math.min(1, dt * 12);
-  weaponRoot.rotation.x += ((-0.04 + state.recoil * 1.5) - weaponRoot.rotation.x) * Math.min(1, dt * 14); weaponRoot.rotation.z += ((aiming ? 0 : -0.02) - weaponRoot.rotation.z) * Math.min(1, dt * 10);
-  const targetFov = aiming ? (activeWeaponIndex === 2 ? 42 : 58) : 76; camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 10); camera.updateProjectionMatrix();
-  if (muzzleTimer > 0) { muzzleTimer -= dt; if (muzzleTimer <= 0) { if (muzzleLight) muzzleLight.intensity = 0; if (muzzleSprite) muzzleSprite.material.opacity = 0; } }
+  if (!weaponRoot) return;
+  state.recoil = Math.max(0, state.recoil - dt * 0.42);
+  const moving = Boolean(
+    keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD ||
+    touchMove.forward || touchMove.back || touchMove.left || touchMove.right
+  );
+  const reloadProgress = state.reloadTimer > 0
+    ? 1 - state.reloadTimer / Math.max(0.001, state.reloadDuration)
+    : 0;
+  const pose = calculateWeaponPose({
+    time: state.elapsed,
+    aiming: state.isAiming,
+    sprinting: state.isSprinting,
+    moving,
+    reloading: state.reloadTimer > 0,
+    reloadProgress,
+    recoil: state.recoil,
+    weaponIndex: activeWeaponIndex,
+  });
+  weaponRoot.position.x += (pose.x - weaponRoot.position.x) * Math.min(1, dt * 12);
+  weaponRoot.position.y += (pose.y - weaponRoot.position.y) * Math.min(1, dt * 12);
+  weaponRoot.position.z += (pose.z - weaponRoot.position.z) * Math.min(1, dt * 12);
+  weaponRoot.rotation.x += (pose.rotationX - weaponRoot.rotation.x) * Math.min(1, dt * 14);
+  weaponRoot.rotation.y += (pose.rotationY - weaponRoot.rotation.y) * Math.min(1, dt * 10);
+  weaponRoot.rotation.z += (pose.rotationZ - weaponRoot.rotation.z) * Math.min(1, dt * 10);
+  camera.fov += (pose.fov - camera.fov) * Math.min(1, dt * 10);
+  camera.updateProjectionMatrix();
+  if (muzzleTimer > 0) {
+    muzzleTimer -= dt;
+    if (muzzleTimer <= 0) {
+      if (muzzleLight) muzzleLight.intensity = 0;
+      if (muzzleSprite) muzzleSprite.material.opacity = 0;
+    }
+  }
 }
 function updateEffects(dt) {
   for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.life -= dt; p.mesh.position.addScaledVector(p.velocity, dt); p.velocity.y -= 7 * dt; p.mesh.material.opacity = Math.max(0, p.life / p.maxLife); if (p.life <= 0) { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); particles.splice(i, 1); } }
