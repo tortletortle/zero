@@ -88,4 +88,4 @@ The new weapon animation is a deterministic viewmodel transform, not a skeletal 
 - Added `src/combat-feedback.mjs` and four tests for front/rear/left/right damage direction, view-relative rotation, normalized impact intensity, and invalid values.
 - Added four directional HUD indicators. Enemy hits now trigger a short stagger, material emissive flash, and a small impact push; incoming enemy fire lights the corresponding player damage direction indicator.
 - Static validation now checks the new HUD element and stylesheet hook.
-- Expanded local validation target: `npm run check` and `npm test`; 19 tests expected after adding the four hit-feedback tests. Browser/WebGL and Android acceptance remain pending.
+- Expanded local validation target: `npm run check` and `npm test`; 19 tests passed, 0 failed; static validation checks 33 HTML IDs and 29 selector references. Browser/WebGL and Android acceptance remain pending.
