@@ -38,3 +38,32 @@ Date: 2026-11-23
 ### Evidence policy
 
 A source file existing is not evidence that the corresponding runtime behavior works. Record command, exit code, environment, and result for every validation. Screenshots and measured performance must come from the actual browser/device under test.
+
+
+## V0.2 weapon-feel feature branch
+
+Date: 2026-11-23
+Branch: `feature/v0.2-weapon-feel`
+
+### Implemented
+
+- Added `src/weapon-feel.mjs` with deterministic weapon-pose calculation.
+- Integrated movement sway, sprint bob, recoil response, ADS positioning/FOV, and weapon-specific reload dip/tilt into the first-person weapon viewmodel.
+- Added five unit tests covering default pose, ADS, movement sway, reload animation endpoints/midpoint, weapon-specific reload motion, and input clamping.
+- Added a GitHub Actions workflow for Node syntax checks and automated tests.
+
+### Local validation
+
+Environment: Node.js v22.16.0; npm 10.9.0.
+
+| Check | Result | Evidence |
+|---|---|---|
+| `npm run check` | Pass | Exit code 0; main gameplay module and both pure logic modules parse |
+| `npm test` | Pass | 9 tests passed, 0 failed; combat rules + weapon pose + static HTML/JS checks |
+| Remote feature-branch source syntax | Pass | Main module and weapon-pose module parsed in the connector runtime after stripping module import/export declarations |
+| Chromium/WebGL render | Not verified | No valid rendered screenshot or browser console capture |
+| Android touch/performance | Not tested | Requires physical Android device |
+
+### Scope boundary
+
+The new weapon animation is a deterministic viewmodel transform, not a skeletal reload animation or production weapon model. No claim is made that the visual quality is final. The feature is isolated on a feature branch and is not yet merged into `develop` or `main`.
