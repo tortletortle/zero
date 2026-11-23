@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { applyDamage, calculateShotDamage, getMissionOutcome, transferReloadAmmo } from './combat-rules.mjs';
 import { calculateWeaponPose } from './weapon-feel.mjs';
+import { chooseTacticalIntent, getFlankApproach, scoreCoverPosition } from './ai-tactics.mjs';
 
 const canvas = document.querySelector('#game-canvas');
 const hud = document.querySelector('#hud');
@@ -177,7 +178,7 @@ function createEnemy(x, z, index) {
   barFill.position.z = 0.01; healthBar.add(barBg, barFill); healthBar.position.y = 2.2; root.add(healthBar);
   const enemy = { root, torso, head, armPivots, legs, healthBar, barFill, health: 100, maxHealth: 100, alive: true, index,
     speed: 1.05 + Math.random() * 0.35, fireCooldown: 0.8 + Math.random() * 1.1, strafeDir: Math.random() > 0.5 ? 1 : -1,
-    strafeTimer: 1.4 + Math.random() * 2, phase: Math.random() * Math.PI * 2, state: 'advance', targetCover: null, hurtFlash: 0 };
+    strafeTimer: 1.4 + Math.random() * 2, phase: Math.random() * Math.PI * 2, role: index % 3 === 0 ? 'flanker' : index % 3 === 1 ? 'assault' : 'support', flankSign: index % 2 === 0 ? 1 : -1, state: 'advance', targetCover: null, hurtFlash: 0 };
   for (const part of [torso, vest, head, helmet, visor, gun, gunBarrel, ...armPivots.flatMap((p) => p.children), ...legs.flatMap((p) => p.children)]) part.userData.enemy = enemy;
   enemyMeshes.push(torso, vest, head, helmet, visor, gun, gunBarrel, ...armPivots.flatMap((p) => p.children), ...legs.flatMap((p) => p.children));
   enemies.push(enemy); return enemy;
@@ -258,9 +259,34 @@ function shoot() {
 function hasLineOfSight(from, to) {
   const direction = to.clone().sub(from); const distance = direction.length(); direction.normalize(); raycaster.set(from, direction); raycaster.far = distance; return raycaster.intersectObjects(worldOccluders, false).length === 0;
 }
-function nearestCover(from, threat) {
-  let best = null; let bestScore = Infinity;
-  for (const point of coverPoints) { const away = point.clone().sub(threat); away.y = 0; away.normalize(); const candidate = point.clone().addScaledVector(away, 1.35); const score = candidate.distanceToSquared(from) + Math.max(0, 10 - candidate.distanceTo(threat)) * 4; if (score < bestScore) { bestScore = score; best = candidate; } }
+function nearestCover(from, threat, excludeEnemy = null) {
+  let best = null;
+  let bestScore = Infinity;
+  for (const point of coverPoints) {
+    const away = point.clone().sub(threat);
+    away.y = 0;
+    if (away.lengthSq() < 0.001) continue;
+    const candidate = point.clone().addScaledVector(away.normalize(), 1.75);
+    const nearbyAllies = enemies.filter((other) =>
+      other.alive && other !== excludeEnemy && other.root.position.distanceTo(candidate) < 2.2
+    ).length;
+    const blocksLineOfSight = !hasLineOfSight(
+      new THREE.Vector3(candidate.x, 1.35, candidate.z),
+      new THREE.Vector3(threat.x, 1.35, threat.z)
+    );
+    const occupied = !canEnemyMove(candidate, 0, 0) || nearbyAllies > 0;
+    const score = scoreCoverPosition({
+      travelDistance: candidate.distanceTo(from),
+      threatDistance: candidate.distanceTo(threat),
+      blocksLineOfSight,
+      nearbyAllies,
+      occupied,
+    });
+    if (score < bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
   return best;
 }
 function canEnemyMove(position, dx, dz) {
@@ -269,26 +295,96 @@ function canEnemyMove(position, dx, dz) {
   return true;
 }
 function moveEnemy(enemy, direction, distance) {
-  const dx = direction.x * distance; const dz = direction.z * distance;
-  if (canEnemyMove(enemy.root.position, dx, 0)) enemy.root.position.x += dx;
-  else if (canEnemyMove(enemy.root.position, 0, dz)) enemy.root.position.z += dz;
-  else { enemy.strafeDir *= -1; const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir); if (canEnemyMove(enemy.root.position, side.x * distance, side.z * distance)) enemy.root.position.addScaledVector(side, distance); }
+  const length = Math.hypot(direction.x, direction.z) || 1;
+  const dx = direction.x / length * distance;
+  const dz = direction.z / length * distance;
+  const side = enemy.strafeDir || 1;
+  const candidates = [
+    { x: dx, z: dz },
+    { x: dx * 0.72 - dz * 0.42 * side, z: dz * 0.72 + dx * 0.42 * side },
+    { x: dx * 0.72 + dz * 0.42 * side, z: dz * 0.72 - dx * 0.42 * side },
+    { x: -dz * side, z: dx * side },
+    { x: dz * side, z: -dx * side },
+  ];
+  for (const step of candidates) {
+    if (!canEnemyMove(enemy.root.position, step.x, step.z)) continue;
+    enemy.root.position.x += step.x;
+    enemy.root.position.z += step.z;
+    return;
+  }
+  enemy.strafeDir *= -1;
 }
 function updateEnemies(dt) {
   const playerPos = camera.position.clone();
   for (const enemy of enemies) {
-    if (!enemy.alive) continue; const pos = enemy.root.position; const toPlayer = new THREE.Vector3(playerPos.x - pos.x, 0, playerPos.z - pos.z); const distance = toPlayer.length(); const direction = toPlayer.clone().normalize();
-    const headPos = new THREE.Vector3(pos.x, 1.65, pos.z); const visible = hasLineOfSight(headPos, new THREE.Vector3(playerPos.x, 1.35, playerPos.z));
-    enemy.strafeTimer -= dt; if (enemy.strafeTimer <= 0) { enemy.strafeDir *= -1; enemy.strafeTimer = 1.6 + Math.random() * 2.2; }
-    if (enemy.health < 48 && !enemy.targetCover) { enemy.targetCover = nearestCover(pos, playerPos); enemy.state = 'retreat'; }
-    if (enemy.state === 'retreat' && enemy.targetCover) { const retreatDir = enemy.targetCover.clone().sub(pos); retreatDir.y = 0; if (retreatDir.length() > 1.1) moveEnemy(enemy, retreatDir.normalize(), enemy.speed * dt * 1.15); else if (visible) enemy.state = 'engage'; }
-    else if (distance > 10.5) { enemy.state = 'advance'; moveEnemy(enemy, direction, enemy.speed * dt); }
-    else if (distance > 4.5) { enemy.state = 'engage'; const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir); moveEnemy(enemy, side, enemy.speed * dt * 0.45); }
-    enemy.root.lookAt(new THREE.Vector3(playerPos.x, 0, playerPos.z)); enemy.root.rotation.y += Math.PI;
-    enemy.phase += dt * (distance > 6 ? 7 : 3); enemy.legs[0].rotation.x = Math.sin(enemy.phase) * (distance > 6 ? 0.55 : 0.12); enemy.legs[1].rotation.x = -enemy.legs[0].rotation.x;
-    enemy.armPivots[0].rotation.x = Math.sin(enemy.phase) * 0.08; enemy.armPivots[1].rotation.x = -0.12; enemy.healthBar.quaternion.copy(camera.quaternion); enemy.healthBar.visible = enemy.health < enemy.maxHealth; if (enemy.hurtFlash > 0) enemy.hurtFlash -= dt;
+    if (!enemy.alive) continue;
+    const pos = enemy.root.position;
+    const toPlayer = new THREE.Vector3(playerPos.x - pos.x, 0, playerPos.z - pos.z);
+    const distance = toPlayer.length();
+    const direction = toPlayer.clone().normalize();
+    const headPos = new THREE.Vector3(pos.x, 1.65, pos.z);
+    const visible = hasLineOfSight(headPos, new THREE.Vector3(playerPos.x, 1.35, playerPos.z));
+
+    enemy.strafeTimer -= dt;
+    if (enemy.strafeTimer <= 0) {
+      enemy.strafeDir *= -1;
+      enemy.strafeTimer = 1.6 + Math.random() * 2.2;
+    }
+    if (enemy.health < 48 && !enemy.targetCover) {
+      enemy.targetCover = nearestCover(pos, playerPos, enemy);
+    }
+
+    const intent = chooseTacticalIntent({
+      health: enemy.health,
+      distance,
+      hasCover: Boolean(enemy.targetCover),
+      role: enemy.role,
+    });
+    if (intent === 'retreat' && enemy.targetCover) {
+      enemy.state = 'retreat';
+      const retreatDir = enemy.targetCover.clone().sub(pos);
+      retreatDir.y = 0;
+      if (retreatDir.length() > 1.1) moveEnemy(enemy, retreatDir, enemy.speed * dt * 1.15);
+      else if (visible) enemy.state = 'engage';
+    } else if (intent === 'advance') {
+      enemy.state = 'advance';
+      const approach = enemy.role === 'flanker'
+        ? getFlankApproach(direction, enemy.flankSign, 0.42)
+        : direction;
+      moveEnemy(enemy, approach, enemy.speed * dt);
+    } else if (intent === 'support') {
+      enemy.state = 'support';
+      const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir);
+      moveEnemy(enemy, side, enemy.speed * dt * 0.18);
+    } else if (intent === 'engage') {
+      enemy.state = 'engage';
+      const side = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(enemy.strafeDir);
+      const lateralSpeed = enemy.role === 'flanker' ? 0.62 : 0.45;
+      moveEnemy(enemy, side, enemy.speed * dt * lateralSpeed);
+    } else {
+      enemy.state = 'hold';
+    }
+
+    enemy.root.lookAt(new THREE.Vector3(playerPos.x, 0, playerPos.z));
+    enemy.root.rotation.y += Math.PI;
+    enemy.phase += dt * (distance > 6 ? 7 : 3);
+    enemy.legs[0].rotation.x = Math.sin(enemy.phase) * (distance > 6 ? 0.55 : 0.12);
+    enemy.legs[1].rotation.x = -enemy.legs[0].rotation.x;
+    enemy.armPivots[0].rotation.x = Math.sin(enemy.phase) * 0.08;
+    enemy.armPivots[1].rotation.x = -0.12;
+    enemy.healthBar.quaternion.copy(camera.quaternion);
+    enemy.healthBar.visible = enemy.health < enemy.maxHealth;
+    if (enemy.hurtFlash > 0) enemy.hurtFlash -= dt;
+
     enemy.fireCooldown -= dt;
-    if (visible && distance < 25 && enemy.fireCooldown <= 0 && state.mode === 'playing') { enemy.fireCooldown = 1.15 + Math.random() * 1.2; const start = new THREE.Vector3(pos.x, 1.2, pos.z).add(direction.clone().multiplyScalar(0.45)); const end = new THREE.Vector3(playerPos.x, 1.35, playerPos.z); spawnTracer(start, end, 0xe36c55); playTone(145, 0.045, 'square', 0.008, -70); if (Math.random() < (distance < 10 ? 0.38 : 0.24)) damagePlayer(distance < 10 ? 9 : 6); }
+    if (visible && distance < 25 && enemy.fireCooldown <= 0 && state.mode === 'playing') {
+      enemy.fireCooldown = 1.15 + Math.random() * 1.2;
+      const start = new THREE.Vector3(pos.x, 1.2, pos.z).add(direction.clone().multiplyScalar(0.45));
+      const end = new THREE.Vector3(playerPos.x, 1.35, playerPos.z);
+      spawnTracer(start, end, 0xe36c55);
+      playTone(145, 0.045, 'square', 0.008, -70);
+      if (Math.random() < (distance < 10 ? 0.38 : 0.24)) damagePlayer(distance < 10 ? 9 : 6);
+    }
   }
 }
 function canPlayerOccupy(x, z) {
