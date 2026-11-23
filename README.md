@@ -70,6 +70,10 @@ python3 -m http.server 8000
 - 未完成：真实浏览器 WebGL 验收、Android 触控验收、音画质量验收、性能基准、完整武器动画、敌人掩体寻路与关卡平衡。
 - 不将程序化几何体演示等同于最终美术质量；不将自动化静态检查等同于真人试玩验收。
 
+## V0.2 — Combat Feel (feature branch)
+
+The `feature/v0.2-weapon-feel` branch adds a deterministic weapon-pose controller with weapon-specific reload motion, movement sway, sprint bob, recoil response, and aim FOV. The controller is isolated in `src/weapon-feel.mjs` and covered by dedicated unit tests. This work remains under review until merged into `develop`; browser rendering and physical-device acceptance are still pending.
+
 ## 许可
 
 本项目代码暂按 MIT License 发布；Three.js 由其各自许可证约束，具体依赖许可请以官方仓库为准。项目未捆绑第三方美术或音频资产。
