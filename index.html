@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101820" />
+  <title>FRONTLINE ZERO｜零号前线</title>
+  <link rel="stylesheet" href="./src/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="game-canvas" aria-label="3D 第一人称射击游戏画面"></canvas>
+    <section id="hud" class="hidden" aria-live="polite">
+      <div class="hud-top-left">
+        <div class="mission-kicker">OPERATION 01 / URBAN BREACH</div>
+        <div class="mission-title">清除街区</div>
+        <div class="objective-line"><span class="objective-dot"></span><span id="objective-text">消灭所有敌方单位</span></div>
+      </div>
+      <div class="hud-top-right">
+        <div class="wave-label">战区状态</div>
+        <div class="wave-value" id="wave-value">WAVE 01</div>
+        <div class="enemy-count"><span id="enemy-count">08</span> HOSTILES REMAINING</div>
+      </div>
+      <div class="crosshair" id="crosshair"><i></i><i></i><i></i><i></i><b></b></div>
+      <div class="hit-marker" id="hit-marker">×</div>
+      <div class="hud-bottom-left">
+        <div class="health-row"><span>VITALS</span><strong id="health-number">100</strong></div>
+        <div class="health-track"><div id="health-fill"></div></div>
+        <div class="status-row"><span id="status-text">COMBAT READY</span><span id="stamina-text">STAMINA 100%</span></div>
+      </div>
+      <div class="hud-bottom-right">
+        <div class="weapon-name" id="weapon-name">ASSAULT RIFLE</div>
+        <div class="ammo-row"><strong id="ammo-current">30</strong><span>/</span><span id="ammo-reserve">90</span></div>
+        <div class="ammo-caption">MAGAZINE <span id="weapon-slot">02</span></div>
+      </div>
+      <div class="reload-indicator hidden" id="reload-indicator">RELOADING</div>
+      <div class="damage-flash" id="damage-flash"></div>
+    </section>
+    <section id="menu-screen" class="screen-layer">
+      <div class="menu-panel">
+        <div class="brand-line"><span class="brand-mark">FZ</span><span>TACTICAL COMBAT SIMULATION</span></div>
+        <p class="eyebrow">SINGLE PLAYER / PROTOTYPE 0.1</p>
+        <h1>FRONTLINE<br /><em>ZERO</em></h1>
+        <p class="subtitle">零号前线 · 城市突破行动</p>
+        <p class="intro">一支敌方小队控制了旧城区。进入街区，利用掩体推进，完成清剿。</p>
+        <button id="start-button" class="primary-button">进入战区 <span>→</span></button>
+        <div class="menu-footer"><span>BUILD 0.1.0</span><span>TRAINING SECTOR / 01</span></div>
+      </div>
+      <div class="menu-side-note"><span class="note-line"></span>NO BACKUP. NO SECOND CHANCE.</div>
+      <div class="controls-card">
+        <div class="controls-title">操作说明</div>
+        <div><kbd>W A S D</kbd><span>移动</span></div>
+        <div><kbd>鼠标</kbd><span>观察 / 瞄准</span></div>
+        <div><kbd>左键</kbd><span>射击</span></div>
+        <div><kbd>右键</kbd><span>精确瞄准</span></div>
+        <div><kbd>R</kbd><span>换弹</span></div>
+        <div><kbd>1 / 2 / 3</kbd><span>切换武器</span></div>
+        <div><kbd>Shift</kbd><span>冲刺</span></div>
+        <div><kbd>空格</kbd><span>跳跃</span></div>
+      </div>
+    </section>
+    <section id="end-screen" class="screen-layer hidden">
+      <div class="end-panel">
+        <p class="eyebrow" id="end-eyebrow">MISSION REPORT</p>
+        <h2 id="end-title">区域已清除</h2>
+        <p id="end-description">所有敌方单位已失去战斗能力。</p>
+        <div class="result-grid">
+          <div><span>确认击杀</span><strong id="result-kills">00</strong></div>
+          <div><span>剩余生命</span><strong id="result-health">100</strong></div>
+          <div><span>行动时间</span><strong id="result-time">00:00</strong></div>
+        </div>
+        <button id="restart-button" class="primary-button">重新部署 <span>↻</span></button>
+      </div>
+    </section>
+    <div id="toast" class="toast hidden"></div>
+    <div id="touch-controls" class="touch-controls hidden">
+      <div class="move-pad">
+        <button data-move="forward" aria-label="前进">▲</button>
+        <div><button data-move="left" aria-label="左移">◀</button><button data-move="back" aria-label="后退">▼</button><button data-move="right" aria-label="右移">▶</button></div>
+      </div>
+      <div id="look-pad" class="look-pad" aria-label="触屏视角控制">拖动观察</div>
+      <div class="action-pad">
+        <button data-action="ads">瞄准</button>
+        <button data-action="reload">换弹</button>
+        <button data-action="weapon">切枪</button>
+        <button data-action="shoot" class="shoot-button">开火</button>
+      </div>
+    </div>
+    <div id="pause-hint" class="pause-hint hidden">点击画面继续 · ESC 暂停</div>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
