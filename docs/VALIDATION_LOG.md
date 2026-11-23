@@ -73,3 +73,11 @@ The new weapon animation is a deterministic viewmodel transform, not a skeletal 
 - The pull-request-triggered CI run completed with conclusion `failure`, but the job reported `runner_id: 0`, an empty `steps` array, and no retrievable job log. Therefore the workflow did not provide evidence that either test command ran. This is recorded as an infrastructure/runner execution failure of unknown cause, not as a code-test failure and not as a pass. Local Node.js validation above remains the available test evidence.
 
 - A retry of the failed PR job produced the same result: completed failure with `runner_id: 0`, no steps, and no logs. The CI execution limitation is reproducible; no additional source-level failure information was exposed.
+
+
+### FZ-011 tactical AI extension
+
+- Added `src/ai-tactics.mjs`: deterministic cover scoring, retreat/support/advance/engage/hold intent selection, and normalized flank approach vectors.
+- Integrated occupied-cover rejection, line-of-sight protection scoring, ally congestion penalties, flanker/assault/support roles, and multi-direction movement fallback into `src/main.js`.
+- Added six unit tests for cover ranking, occupied positions, retreat gating, support range, intent distance bands, and flank vector normalization.
+- Local validation for the expanded branch: `npm run check` and `npm test` pass; 15 total tests expected after the new six tests are included. Browser and Android acceptance remain pending.
