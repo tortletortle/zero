@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { applyDamage, calculateShotDamage, getMissionOutcome, transferReloadAmmo } from './combat-rules.mjs';
+import { calculateWeaponPose } from './weapon-feel.mjs';
 
 const canvas = document.querySelector('#game-canvas');
 const hud = document.querySelector('#hud');
