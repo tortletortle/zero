@@ -71,3 +71,5 @@ The new weapon animation is a deterministic viewmodel transform, not a skeletal 
 ### GitHub Actions observation
 
 - The pull-request-triggered CI run completed with conclusion `failure`, but the job reported `runner_id: 0`, an empty `steps` array, and no retrievable job log. Therefore the workflow did not provide evidence that either test command ran. This is recorded as an infrastructure/runner execution failure of unknown cause, not as a code-test failure and not as a pass. Local Node.js validation above remains the available test evidence.
+
+- A retry of the failed PR job produced the same result: completed failure with `runner_id: 0`, no steps, and no logs. The CI execution limitation is reproducible; no additional source-level failure information was exposed.
